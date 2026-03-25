@@ -105,11 +105,6 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-// Routes
-
-app.get("/", (req, res) => {
-  res.send("🚀 Backend is running successfully");
-});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/search', searchRoutes);
