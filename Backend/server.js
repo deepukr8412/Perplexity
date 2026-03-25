@@ -4,6 +4,7 @@ const cors = require('cors');
 const passport = require('passport');
 const session = require('express-session');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const path = require('path');
 
 const connectDB = require('./config/database');
 const authRoutes = require('./routes/auth');
@@ -112,6 +113,7 @@ app.get("/", (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/search', searchRoutes);
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Google OAuth routes
 app.get('/auth/google',
@@ -144,13 +146,9 @@ app.use((err, req, res, next) => {
 });
 
 // 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found'
-  });
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
-
 const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
