@@ -142,6 +142,12 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.get("*", (req, res) => {
+  if (req.path.startsWith("/api")) {
+    return res.status(404).json({
+      success: false,
+      message: "API route not found"
+    });
+  }
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 const PORT = process.env.PORT || 5000;
