@@ -37,8 +37,9 @@ const performSearch = async (req, res) => {
       ? sources.map((s, i) => `[${i + 1}] Title: ${s.title}\nContent: ${s.content}`).join("\n\n")
       : "No web results found.";
 
-    const systemPrompt = `You are a professional AI search assistant. Answer concisely based ONLY on the provided sources. 
-Cite each statement using [1], [2] next to relevant facts. Use Markdown for clarity.`;
+    const systemPrompt = `You are a professional AI search assistant. Provide a detailed, comprehensive, and accurate answer based on the provided sources. 
+If the user asks for a specific length (e.g., 500 words), try to honor that while remaining grounded in the facts.
+Always cite each statement using [1], [2] next to the relevant facts. Use Markdown for clarity and structure.`;
 
     const userPrompt = `Query: "${query}"\n\nSources:\n${contextText}`;
 

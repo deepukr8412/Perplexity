@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const SOCKET_URL = API_BASE_URL.replace('/api', '');
 
 // Create axios instance
 const api = axios.create({
@@ -10,6 +11,30 @@ const api = axios.create({
   },
   timeout: 30000,
 });
+
+import { io } from 'socket.io-client';
+
+let socket = null;
+
+export const getSocket = () => {
+  const token = localStorage.getItem('token');
+  
+  if (!socket) {
+    socket = io(SOCKET_URL, {
+      auth: { token },
+      autoConnect: false
+    });
+  } else if (socket.auth?.token !== token) {
+    // Update token if it's different (after login/logout)
+    socket.auth.token = token;
+    if (socket.connected) {
+      socket.disconnect().connect();
+    }
+  }
+  
+  return socket;
+};
+
 
 // Add request interceptor to include auth token
 api.interceptors.request.use(

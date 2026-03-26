@@ -56,15 +56,13 @@ const SearchPage = () => {
   const [copied, setCopied] = useState(false);
   const [useLangChain, setUseLangChain] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
+  const [status, setStatus] = useState('');
   
   const inputRef = useRef(null);
   const resultsRef = useRef(null);
 
-  const typedResponse = useTypewriter(
-    searchResults?.response || "", 
-    1, 
-    searchResults && !loading && !searchResults.fromHistory
-  );
+  const typedResponse = searchResults?.response || "";
+
 
   useEffect(() => {
     if (searchResults && resultsRef.current) {
@@ -93,28 +91,81 @@ const SearchPage = () => {
     if (!query.trim() || loading) return;
 
     setLoading(true);
-    setSearchResults(null);
+    setStatus('Connecting...');
+    setSearchResults({
+      query,
+      response: '',
+      sources: [],
+      fromHistory: false
+    });
+
     try {
-      const response = await searchAPI.search(query, useLangChain);
-      setSearchResults({
-        ...response.data,
-        fromHistory: false
+      const { getSocket } = await import('../services/api');
+      const socket = getSocket();
+      
+      if (!socket.connected) {
+        socket.connect();
+      }
+
+      // Cleanup listeners before adding new ones
+      socket.off('sources');
+      socket.off('token');
+      socket.off('complete');
+      socket.off('error');
+      socket.off('connect_error');
+      socket.off('status');
+
+      socket.on('status', (data) => setStatus(data.message));
+      
+      socket.on('sources', (sources) => {
+        setSearchResults(prev => ({ ...prev, sources }));
       });
-      window.dispatchEvent(new CustomEvent('refreshHistory'));
+
+      socket.on('token', (token) => {
+        setSearchResults(prev => ({
+          ...prev,
+          response: prev.response + token
+        }));
+      });
+
+      socket.on('complete', (data) => {
+        setLoading(false);
+        setStatus('');
+        window.dispatchEvent(new CustomEvent('refreshHistory'));
+      });
+
+      const handleError = (err) => {
+        console.error('Search error:', err);
+        setSearchResults({
+          query,
+          response: `**Search failed.** ${err.message || 'The AI server is unreachable or your session has expired.'}`,
+          sources: [],
+          error: true,
+          fromHistory: false
+        });
+        setLoading(false);
+        setStatus('');
+      };
+
+      socket.on('error', handleError);
+      socket.on('connect_error', handleError);
+
+      socket.emit('search', { query });
+
     } catch (error) {
-      console.error('Search failed:', error);
-      const detail = error.response?.data?.error_detail || error.response?.data?.message;
+      console.error('Search initiation failed:', error);
+      setLoading(false);
+      setStatus('');
       setSearchResults({
         query,
-        response: `**Search failed.** ${detail || 'Please check your internet connection and API keys.'}`,
+        response: `**Search failed.** Could not initialize connection.`,
         sources: [],
         error: true,
         fromHistory: false
       });
-    } finally {
-      setLoading(false);
     }
   };
+
 
   const handleCopy = async () => {
     if (searchResults?.response) {
@@ -154,7 +205,7 @@ const SearchPage = () => {
         <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col py-8">
           
           <AnimatePresence mode="wait">
-            {!searchResults && !loading ? (
+            {!searchResults?.query && !loading ? (
               <motion.div 
                 key="initial"
                 initial={{ opacity: 0, y: 20 }}
@@ -258,7 +309,7 @@ const SearchPage = () => {
                   ))}
                 </div>
               </motion.div>
-            ) : loading ? (
+            ) : loading && searchResults?.sources?.length === 0 ? (
               <motion.div 
                 key="loading"
                 initial={{ opacity: 0 }}
@@ -270,7 +321,8 @@ const SearchPage = () => {
                   <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
                   <Sparkles className="absolute inset-0 m-auto w-5 h-5 text-indigo-400 animate-pulse" />
                 </div>
-                <h2 className="mt-8 text-2xl font-semibold text-white">Searching the web...</h2>
+                <h2 className="mt-8 text-2xl font-semibold text-white">{status || "Searching the web..."}</h2>
+
                 <div className="mt-4 flex flex-col items-center gap-3">
                   <div className="flex gap-2 text-indigo-400/60 font-mono text-xs uppercase tracking-widest">
                     <span>Gathering Insight</span>

@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { authAPI } from '../services/api';
 
-const API_URL = 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const BACKEND_URL = API_BASE_URL.replace('/api', '');
+
 
 const AuthContext = createContext();
 
@@ -34,6 +36,7 @@ const authReducer = (state, action) => {
         user: null, 
         token: null, 
         isAuthenticated: false,
+        loading: false, // Set loading to false on logout
         error: null 
       };
     case 'CLEAR_ERROR':
@@ -89,6 +92,10 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       localStorage.removeItem('token');
       dispatch({ type: 'LOGOUT' });
+      dispatch({ 
+        type: 'LOGIN_FAILURE', 
+        payload: error.response?.data?.message || 'Session expired. Please login again.' 
+      });
     }
   };
 
@@ -112,7 +119,7 @@ export const AuthProvider = ({ children }) => {
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (!error.response) {
-        errorMessage = 'Cannot connect to server. Please check if the backend is running on port 5000.';
+        errorMessage = 'Cannot connect to server. Please check if the backend is reachable.';
       }
       
       dispatch({
@@ -143,7 +150,7 @@ export const AuthProvider = ({ children }) => {
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (!error.response) {
-        errorMessage = 'Cannot connect to server. Please check if the backend is running on port 5000.';
+        errorMessage = 'Cannot connect to server. Please check if the backend is reachable.';
       }
       
       dispatch({
@@ -164,7 +171,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const googleLogin = () => {
-    window.location.href = `${API_URL}/auth/google`;
+    window.location.href = `${BACKEND_URL}/auth/google`;
   };
 
   const value = {
